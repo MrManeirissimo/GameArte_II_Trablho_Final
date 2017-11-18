@@ -1,40 +1,15 @@
 import processing.sound.*;
 
+Enviroment MusicalEnviroment;
+Flock EnviromentFlock;
+
 TriOsc oscilator;
 Env enveloper;
 
 PlayerConfig pConfig;
 NotePlayer nPlayer;
 
-Integer[] notes;
-Integer[] chord;
 
-//----------------------- Chord Definition -------------------
-
-Scale cMajor;  Scale cMinorN;  Scale cMinorH;
-Scale dMajor;  Scale dMinorN;  Scale dMinorH;
-Scale eMajor;  Scale eMinorN;  Scale eMinorH;
-Scale fMajor;  Scale fMinorN;  Scale fMinorH;
-Scale gMajor;  Scale gMinorN;  Scale gMinorH;
-Scale aMajor;  Scale aMinorN;  Scale aMinorH;
-Scale bMajor;  Scale bMinorN;  Scale bMinorH;
-
-//----------------------- Chord Definition -------------------
-
-//--------------------- Chord Initialization -----------------
-
-public void SetupChords()
-{
-    cMajor = new Scale(ScaleName.C, ScaleType.Major, 0);
-    dMajor = new Scale(ScaleName.D, ScaleType.Major, 0);
-    eMajor = new Scale(ScaleName.E, ScaleType.Major, 0);
-    fMajor = new Scale(ScaleName.F, ScaleType.Major, 0);
-    gMajor = new Scale(ScaleName.G, ScaleType.Major, 0);
-    aMajor = new Scale(ScaleName.A, ScaleType.Major, 0);
-    bMajor = new Scale(ScaleName.B, ScaleType.Major, 0);
-}
-
-//--------------------- Chord Initialization -----------------
 class ChangePlayerNotes implements Action
 {
     NotePlayer player;
@@ -52,45 +27,106 @@ class ChangePlayerNotes implements Action
     }
 };
 
+class ChangeToNextProgression extends TimedAction
+{
+    protected int currentScale = 0;
+    
+    protected NotePlayer player;
+    protected Scale[] scalesToPlay;
+    
+    
+    public ChangeToNextProgression(NotePlayer player, Scale[] scales, int interval)
+    {
+        this.player = player;
+        this.scalesToPlay = scales;
+        this.interval = interval;
+        
+        currentScale = 1;
+        currentTime = millis();
+    }
+  
+    public void run()
+    {
+        player.SetKeys(scalesToPlay[currentScale].MakeChord(new int[] {1, 3, 5}));
+        currentScale++;
+        
+        if(currentScale >= scalesToPlay.length)
+            currentScale = 0;
+            
+            
+        ArpeggioPlayer ap = (ArpeggioPlayer)player;
+        if(ap != null)
+        {
+           ap.Reset(); 
+        }
+     }
+};
+
 void setup()
 {  
   size(800, 600);
-  background(255);
+  colorMode(HSB, width, width, width);
+  
 
-  //Defines a scale
-  SetupChords();
-  
-  //All notes from the scale
-  notes = cMajor.GetScale();
-  
-  //Triad
-  chord = cMajor.MakeChord(new int[]{1,3,5});  
-  
   oscilator = new TriOsc(this);
   enveloper = new Env(this);
   
   pConfig = new PlayerConfig(0.001f, 0.04f, 0.4f, 0.2f, 0.8f);
   nPlayer = new ArpeggioPlayer(oscilator, enveloper, pConfig);
+
+  //Defines all chord scales
+  SetupChords();
   
-  nPlayer.SetupNotes(chord);
+  //Defines minor harmonic chord scales
+  SetupMinorHarmonicChords();
   
-  UserInput.Initialize(new char[]{'a', 'w', 's'});
-  UserInput.AddListener('a', new ChangePlayerNotes(nPlayer, cMajor.MakeChord(new int[]{1,3,5})));
-  UserInput.AddListener('s', new ChangePlayerNotes(nPlayer, dMajor.MakeChord(new int[]{1,3,5})));
-  //UserInput.AddListener('a', new SayHi());
+  //Sets up the background player defined in "MusicalDefinition"
+  SetupBackgoundPlayer();
+  
+  //Sets up the boid player defined in "MusicalDefinition"
+  SetupBoidPlayer();
+
+  bkg_player.SetupNotes(cMajor.MakeChord(new int[]{1,3,5}));
+  boid_player.SetupNotes(cMajor.MakeChord(new int[]{1,3,5}));
+  
+  UserInput.Initialize(userPiano);
+  UserInput.AddListener(C_KEY, new ChangePlayerNotes(bkg_player, cMajor.MakeChord(new int[]{1,3,5})));
+  UserInput.AddListener(D_KEY, new ChangePlayerNotes(bkg_player, dMajor.MakeChord(new int[]{1,3,5})));
+  
+  EventHandler.AddEvent(new ChangeToNextProgression(boid_player, new Scale[] {cMajor, eMinorH, dMinorH, gMajor}, 2000));  
+  
+  //MusicalEnviroment = new Enviroment();
+  //MusicalEnviroment.SetScale(eMajor);
+  
+  EnviromentFlock = new Flock(MusicalEnviroment);
 }
 
-int loopTime = 250;
+int loopTime = 300;
 int currentTime = 0;
 void draw()
 { 
+  background(50);
   if(millis() >= currentTime)
   {
-     nPlayer.Play();
+     //nPlayer.Play();
+     //bkg_player.Play();
+     boid_player.Play();
      
      currentTime = millis() + loopTime;
   }
+  
+  EventHandler.Run(millis());
+  EnviromentFlock.Run();
 }
+
+void mousePressed()
+{
+    for (int i = 0; i < 10; i++)
+    {
+        EnviromentFlock.addBoid(new Boid(mouseX,mouseY));
+    }
+}
+
 void keyPressed()
 {
     UserInput.TriggerKey(key);

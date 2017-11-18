@@ -1,50 +1,25 @@
-Flock flock;
-
-void a_setup()
-{
-    size(640, 360);
-    flock = new Flock();
-    
-    // Add an initial set of boids into the system
-    for (int i = 0; i < 150; i++)
-    {
-        flock.addBoid(new Boid(width/2,height/2));
-    }
-}
-
-void a_draw()
-{
-  background(50);
-  flock.run();
-}
-
-// Add a new boid into the System
-void a_mousePressed()
-{
-  flock.addBoid(new Boid(mouseX,mouseY));
-}
-
-
-
 // The Flock (a list of Boid objects)
-
 class Flock
 {
-    //An ArrayList for all the boids
-    ArrayList<Boid> boids;
-
-    Flock()
+    protected Enviroment env;
+    protected ArrayList<Boid> boids;
+    
+    public Flock()
     {
-      //Initialize the ArrayList
-      boids = new ArrayList<Boid>();
+      
+    }
+    public Flock(Enviroment env)
+    {
+        boids = new ArrayList<Boid>();
+        this.env = env;
     }
 
-    void run()
+    // Passing the entire list of boids to each boid individually
+    void Run()
     {
         for (Boid b : boids)
         {
-            // Passing the entire list of boids to each boid individually
-            b.run(boids);  
+            b.run(boids);
         }
     }
 
@@ -52,7 +27,6 @@ class Flock
     {
       boids.add(b);
     }
-
 }
 
 
@@ -61,7 +35,7 @@ class Flock
 // The Boid class
 class Boid
 {
-
+    float size = 5;
     PVector position;
     PVector velocity;
     PVector acceleration;
@@ -74,11 +48,7 @@ class Boid
         acceleration = new PVector(0, 0);
     
         // This is a new PVector method not yet implemented in JS
-        // velocity = PVector.random2D();
-    
-        // Leaving the code temporarily this way so that this example runs in JS
-        float angle = random(TWO_PI);
-        velocity = new PVector(cos(angle), sin(angle));
+         velocity = PVector.random2D();
     
         position = new PVector(x, y);
         r = 2.0;
@@ -86,7 +56,8 @@ class Boid
         maxforce = 0.03;
     }
 
-  void run(ArrayList<Boid> boids) {
+  void run(ArrayList<Boid> boids)
+  {
     flock(boids);
     update();
     borders();
@@ -99,7 +70,8 @@ class Boid
   }
 
   // We accumulate a new acceleration each time based on three rules
-  void flock(ArrayList<Boid> boids) {
+  void flock(ArrayList<Boid> boids)
+  {
     PVector sep = separate(boids);   // Separation
     PVector ali = align(boids);      // Alignment
     PVector coh = cohesion(boids);   // Cohesion
@@ -126,7 +98,8 @@ class Boid
 
   // A method that calculates and applies a steering force towards a target
   // STEER = DESIRED MINUS VELOCITY
-  PVector seek(PVector target) {
+  PVector seek(PVector target)
+  {
     PVector desired = PVector.sub(target, position);  // A vector pointing from the position to the target
     // Scale to maximum speed
     desired.normalize();
@@ -142,13 +115,15 @@ class Boid
     return steer;
   }
 
-  void render() {
+  void render()
+  {
     // Draw a triangle rotated in the direction of velocity
-    float theta = velocity.heading2D() + radians(90);
-    // heading2D() above is now heading() but leaving old syntax until Processing.js catches up
+    float theta = velocity.heading() + radians(90);
     
-    fill(200, 100);
-    stroke(255);
+    fill(position.x , height, height);
+    stroke(115);
+    
+    //OpenGL Drawing style
     pushMatrix();
     translate(position.x, position.y);
     rotate(theta);
@@ -158,10 +133,15 @@ class Boid
     vertex(r, r*2);
     endShape();
     popMatrix();
+    
+    //stroke(255);
+    //ellipseMode(CENTER);
+    //ellipse(position.x, position.y, 6, 6);
   }
 
   // Wraparound
-  void borders() {
+  void borders()
+  {
     if (position.x < -r) position.x = width+r;
     if (position.y < -r) position.y = height+r;
     if (position.x > width+r) position.x = -r;
@@ -170,30 +150,39 @@ class Boid
 
   // Separation
   // Method checks for nearby boids and steers away
-  PVector separate (ArrayList<Boid> boids) {
+  PVector separate (ArrayList<Boid> boids)
+  {
     float desiredseparation = 25.0f;
     PVector steer = new PVector(0, 0, 0);
     int count = 0;
+    
     // For every boid in the system, check if it's too close
-    for (Boid other : boids) {
+    for (Boid other : boids)
+    {
       float d = PVector.dist(position, other.position);
+      
       // If the distance is greater than 0 and less than an arbitrary amount (0 when you are yourself)
-      if ((d > 0) && (d < desiredseparation)) {
+      if ((d > 0) && (d < desiredseparation))
+      {
         // Calculate vector pointing away from neighbor
         PVector diff = PVector.sub(position, other.position);
+        
         diff.normalize();
         diff.div(d);        // Weight by distance
         steer.add(diff);
         count++;            // Keep track of how many
       }
     }
+    
     // Average -- divide by how many
-    if (count > 0) {
+    if (count > 0)
+    {
       steer.div((float)count);
     }
 
     // As long as the vector is greater than 0
-    if (steer.mag() > 0) {
+    if (steer.mag() > 0)
+    {
       // First two lines of code below could be condensed with new PVector setMag() method
       // Not using this method until Processing.js catches up
       // steer.setMag(maxspeed);
@@ -209,13 +198,18 @@ class Boid
 
   // Alignment
   // For every nearby boid in the system, calculate the average velocity
-  PVector align (ArrayList<Boid> boids) {
+  PVector align (ArrayList<Boid> boids)
+  {
     float neighbordist = 50;
     PVector sum = new PVector(0, 0);
     int count = 0;
-    for (Boid other : boids) {
+    
+    for (Boid other : boids)
+    {
       float d = PVector.dist(position, other.position);
-      if ((d > 0) && (d < neighbordist)) {
+      
+      if ((d > 0) && (d < neighbordist))
+      {
         sum.add(other.velocity);
         count++;
       }
@@ -240,22 +234,29 @@ class Boid
 
   // Cohesion
   // For the average position (i.e. center) of all nearby boids, calculate steering vector towards that position
-  PVector cohesion (ArrayList<Boid> boids) {
+  PVector cohesion (ArrayList<Boid> boids)
+  {
     float neighbordist = 50;
     PVector sum = new PVector(0, 0);   // Start with empty vector to accumulate all positions
     int count = 0;
-    for (Boid other : boids) {
+    
+    for (Boid other : boids)
+    {
       float d = PVector.dist(position, other.position);
-      if ((d > 0) && (d < neighbordist)) {
+      if ((d > 0) && (d < neighbordist))
+      {
         sum.add(other.position); // Add position
         count++;
       }
     }
-    if (count > 0) {
+    
+    if (count > 0)
+    {
       sum.div(count);
       return seek(sum);  // Steer towards the position
     } 
-    else {
+    else 
+    {
       return new PVector(0, 0);
     }
   }

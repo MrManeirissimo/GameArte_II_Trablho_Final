@@ -23,9 +23,9 @@ public enum ScaleName
   D(62),
   E(64),
   F(65),
-  G(66),
-  A(68),
-  B(70);
+  G(67),
+  A(69),
+  B(81);
   
   
   private int value;
@@ -107,7 +107,19 @@ public class Scale
       return(chord.toArray(new Integer[chord.size()]));
   }
   
+  public int getKey(int index)
+  {
+      return (keys.get(index));
+  }
+  
+  public int Size()
+  {
+     return(keys.size()); 
+  }
+  
 };
+
+//--------------------------- Player config ---------------------------
 
 public class PlayerConfig
 {
@@ -126,6 +138,10 @@ public class PlayerConfig
        this.attackTime = attackTime;
     }
 };
+
+//--------------------------- Player config ---------------------------
+
+//--------------------------- Note players ----------------------------
 
 public abstract class NotePlayer
 {
@@ -169,6 +185,28 @@ public abstract class NotePlayer
 };
 
 
+public class SingleNotePlayer extends NotePlayer
+{
+    public SingleNotePlayer(TriOsc oscilator, Env enveloper, PlayerConfig config)
+    {
+      super(oscilator, enveloper, config);
+    }
+    
+    public void SetKeys(Integer note)
+    {
+      this.keys = new Integer[] {note};
+    }
+    public void Play()
+    {
+        if(keys.length <= 0)
+            return;
+            
+        oscilator.play(MIDItoFrequency(keys[0]), config.amplitude); 
+        enveloper.play(oscilator, config.attackTime, config.sustainTime, config.sustainLevel, config.releaseTime);
+    }
+};
+
+
 public class ChordPlayer extends NotePlayer
 {
     public ChordPlayer(TriOsc oscilator, Env enveloper, PlayerConfig config)
@@ -186,6 +224,7 @@ public class ChordPlayer extends NotePlayer
     }
 };
 
+
 public class ArpeggioPlayer extends NotePlayer
 {
     protected int currentNote = 0;
@@ -197,6 +236,9 @@ public class ArpeggioPlayer extends NotePlayer
 
     public void Play()
     {
+        if(keys == null || keys.length <= 0)
+          return;
+          
         oscilator.play(MIDItoFrequency(keys[currentNote]), config.amplitude); 
         enveloper.play(oscilator, config.attackTime, config.sustainTime, config.sustainLevel, config.releaseTime);
                 
@@ -211,6 +253,8 @@ public class ArpeggioPlayer extends NotePlayer
        currentNote = 0;
     }
 };
+
+//--------------------------- Note players ----------------------------
 
 
         //this.playmode = playmode;
